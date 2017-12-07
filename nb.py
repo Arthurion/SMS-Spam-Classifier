@@ -1,69 +1,41 @@
-
 """
-Created on Sun Nov 26 15:53:39 2017
+Created on Sat Dec  2 17:23:13 2017
 
 @author: Arthurion9
-
-New possible features:
-    - Length of sms
-    - Number of capital letters
-    - Number of exclamation marks
 """
 
 from sklearn.naive_bayes import MultinomialNB
 import pandas as pd
 import numpy as np
-import nltk
-import math
 
+# Importing the dataset
+data = pd.read_csv('spambase.data').as_matrix()
 
-data = pd.read_csv('spam.csv', encoding = 'latin-1')
-X = data['v2']
-y = data['v1']
-X_list = X.tolist()
-y_list = y.tolist()
-words = X.apply(nltk.word_tokenize)
-
-# Encoding categorical data
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-labelencoder_y = LabelEncoder()
-y[:] = labelencoder_y.fit_transform(y[:])
-
-# Splitting the dataset into the Training set and Test set
+### Without Kfold
+# Training and testing sets
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+Xtrain,Xtest,Ytrain,Ytest = train_test_split(data[:,0:56], data[:,57], test_size = 0.2)
 
-# Part 2 - Now let's make the ANN!
+# Multinomial Naive Bayes
+model = MultinomialNB()
+model.fit(Xtrain, Ytrain)
+print("Classification rate for NB:", model.score(Xtest, Ytest))
 
-# Importing the Keras libraries and packages
-import keras
-from keras.models import Sequential
-from keras.layers import Dense
 
-# Initialising the ANN
-classifier = Sequential()
-
-# Adding the input layer and the first hidden layer
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu', input_dim = 1))
-
-# Adding the second hidden layer
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu'))
-
-# Adding the output layer
-classifier.add(Dense(units = 1, kernel_initializer = 'uniform', activation = 'sigmoid'))
-
-# Compiling the ANN
-classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
-
-# Fitting the ANN to the Training set
-classifier.fit(X_train, y_train, batch_size = 10, epochs = 100)
-
-# Part 3 - Making predictions and evaluating the model
-
-# Predicting the Test set results
-y_pred = classifier.predict(X_test)
-y_pred = (y_pred > 0.5)
-
-# Making the Confusion Matrix
-from sklearn.metrics import confusion_matrix
-cm = confusion_matrix(y_test, y_pred)
+### With K-fold
+# K-fold
+from sklearn.model_selection import KFold
+kf = KFold(n_splits=10, shuffle=True)
+score_NB = 0
+for train_index, test_index in kf.split(data):
+    Xtrain, Xtest = data[train_index,0:56], data[test_index,0:56]
+    Ytrain, Ytest = data[train_index,57], data[test_index,57]
+    
+    # Multinomial Naive Bayes
+    model = MultinomialNB()
+    model.fit(Xtrain, Ytrain)
+    score = model.score(Xtest, Ytest)
+    score_NB += score
+    print("Classification rate for NB:", score)
+score_NB /= kf.get_n_splits()
+print(score_NB)
